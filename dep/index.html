@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title><!-- @echo title --></title>
+        <!-- @if dev -->
+        <script src="/src/index.js"></script>
+        <script src="../lib/basejs/src/base.js"></script>
+        <!-- @endif -->
+        <script><!-- @echo indexjs --></script>
+    </head>
+    <body>
+      <span id="gameContainer">
+        <canvas id="display" width="600", height="400"></canvas>
+        <div id="error div" style="display:none">
+			    Oh, no! an error has occurred.
+			    <p>
+				    <textarea readonly id="error text" rows="25" cols="100">error text</textarea>
+			    </p>
+		    </div>
+		  </span>
+    </body>
+</html>

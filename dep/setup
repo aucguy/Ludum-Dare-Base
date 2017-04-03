@@ -1,0 +1,21 @@
+if [ $1 == "" ]; then
+    echo "usage: init <Ludum-Dare-Base dir>"
+    exit 1
+fi
+
+LDBase=$1
+root=$(pwd)
+
+echo "require('./$LDBase/dep/wrappedGulpFile.js').load('$LDBase');" > gulpfile.js
+
+npm install
+git submodule init
+git submodule update
+
+cd $LDBase
+npm install
+git submodule init
+git submodule update
+cd $root
+
+gulp setup

@@ -1,0 +1,30 @@
+{
+  "name": "ludum-dare-base",
+  "version": "1.0.0",
+  "description": "Base code for Ludum-Dare",
+  "main": "none",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "aucguy",
+  "license": "MIT",
+  "dependencies": {
+    "glob": "^7.1.1",
+    "grunt": "^1.0.1",
+    "grunt-subgrunt": "^1.2.0",
+    "gulp-add-src": "^0.2.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-grunt": "^0.5.5",
+    "gulp-jsbeautifier": "^2.1.0",
+    "gulp-jshint": "^2.0.4",
+    "gulp-jshint-html-reporter": "^0.1.3",
+    "gulp-preprocess": "^2.0.0",
+    "gulp-replace": "^0.5.4",
+    "gulp-uglify": "^2.1.2",
+    "gutil": "^1.6.4",
+    "jshint": "^2.9.4",
+    "prepr": "^1.1.1",
+    "through2": "^2.0.3",
+    "yargs": "^7.1.0"
+  }
+}
