@@ -149,12 +149,17 @@ function load(ldBaseDir) {
     });
   }
 
+  function handlePipeError(error) {
+    console.log(error.fileName + ': ' + error.message);
+  }
+
   gulp.task('build', function() {
     taskInit(this);
     //libraries
     buildLib('basejs', 'grunt build --injectors=phaser');
     buildLib('canvg', 'grunt build');
     buildLib(path.join('phaser', 'v2'), 'grunt full');
+    buildLib('javascript-state-machine', 'grunt build');
 
     var relVars = util.mix(ppVars(), {
       dev: false,
@@ -166,12 +171,14 @@ function load(ldBaseDir) {
       .pipe(pp({
         context: relVars
       }))
-      .pipe(concat('null'))
       .pipe(uglify())
+      .on('error', handlePipeError)
+      .pipe(concat('null'))
       .pipe(addsrc.prepend([
         path.join(ldBaseDir, 'lib/basejs/build/baseinjectors.min.js'),
         path.join(ldBaseDir, 'lib/canvg/canvg.min.js'),
-        path.join(ldBaseDir, 'lib/phaser/v2/dist/phaser.min.js')
+        path.join(ldBaseDir, 'lib/phaser/v2/dist/phaser.min.js'),
+        path.join(ldBaseDir, 'lib/javascript-state-machine/state-machine.min.js')
       ]))
       .pipe(concat('app.min.js'))
       .pipe(gulp.dest('build/release'));
@@ -183,6 +190,7 @@ function load(ldBaseDir) {
         context: relVars
       }))
       .pipe(uglify())
+      .on('error', handlePipeError)
       .pipe(addsrc.prepend(path.join(ldBaseDir, 'lib/basejs/build/base.min.js')))
       .pipe(concat('output')),
       (files) => gulp.src(path.join(ldBaseDir, 'dep/index.html'))
