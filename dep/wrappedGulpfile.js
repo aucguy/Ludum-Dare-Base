@@ -11,6 +11,7 @@ const pp = require('gulp-preprocess');
 const addsrc = require('gulp-add-src');
 const jshint = require('gulp-jshint');
 const prettify = require('gulp-jsbeautifier');
+const replace = require('gulp-replace');
 
 const yargs = require('yargs');
 
@@ -140,7 +141,7 @@ function load(ldBaseDir) {
    * builds the library
    **/
   function buildLib(lib, cmd) {
-    var cwd = path.resolve(path.join(ldBaseDir, 'lib', lib));
+    var cwd = path.resolve(path.join(ldBaseDir, lib));
     child_process.execSync('npm install', {
       cwd
     });
@@ -152,33 +153,43 @@ function load(ldBaseDir) {
   function handlePipeError(error) {
     console.log(error.fileName + ': ' + error.message);
   }
+  
+  function baseJsReplace(src, dest) {
+     gulp.src(path.join(ldBaseDir, src))
+      .pipe(replace(/([\w.]*)[.]addEventListener\(/g, 'base.addEventListener($1,'))
+      .pipe(replace( /([\w.]*)[.]removeEventListener\(/g, 'base.removeEventListener($1,'))
+      .pipe(gulp.dest(dest))
+  }
 
   gulp.task('build', function() {
     taskInit(this);
     //libraries
-    buildLib('basejs', 'grunt build --injectors=phaser');
-    buildLib('canvg', 'grunt build');
-    buildLib(path.join('phaser', 'v2'), 'grunt full');
-    buildLib('javascript-state-machine', 'grunt build');
+    buildLib('lib/basejs', 'grunt build --injectors=phaser');
+    buildLib('node_modules/phaser', 'webpack');
+    //fabric is prebuilt
 
     var relVars = util.mix(ppVars(), {
       dev: false,
       rel: true
     });
-
+    
+    baseJsReplace('node_modules/fabric/dist/fabric.js', 'build/fabricRepl.js');
+    baseJsReplace('node_modules/phaser/dist/phaser.min.js', 'build/phaserRepl.min.js')
+    
     //application
     gulp.src(['src/**/*.js', path.join(ldBaseDir, 'src/**/*.js'), '!src/index.js'])
       .pipe(pp({
         context: relVars
       }))
+      .pipe(addsrc.prepend([
+        path.join(ldBaseDir, 'build/fabricRepl.js')
+      ]))
       .pipe(uglify())
       .on('error', handlePipeError)
       .pipe(concat('null'))
       .pipe(addsrc.prepend([
         path.join(ldBaseDir, 'lib/basejs/build/baseinjectors.min.js'),
-        path.join(ldBaseDir, 'lib/canvg/canvg.min.js'),
-        path.join(ldBaseDir, 'lib/phaser/v2/dist/phaser.min.js'),
-        path.join(ldBaseDir, 'lib/javascript-state-machine/state-machine.min.js')
+        path.join(ldBaseDir, 'build/phaserRepl.min.js'),
       ]))
       .pipe(concat('app.min.js'))
       .pipe(gulp.dest('build/release'));

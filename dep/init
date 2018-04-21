@@ -13,4 +13,4 @@ LDBase=$1
 git init
 git submodule add "C:\Users\Owner\Documents\fun\ludum\Ludum-Dare-Base.git" $LDBase
 npm install gulp --save-dev
-./$LDBase/toplevel/setup $LDBase
+./$LDBase/dep/setup $LDBase
