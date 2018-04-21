@@ -1,16 +1,16 @@
 if [ -z "$1" ]; then
-    echo usage: init <Ludum-Dare-Base dir>
+    echo usage: "init <Ludum-Dare-Base dir>"
     exit 1
 fi
 
 if [ ! -f package.json ]; then
-    echo if npm init doesn't exit but creates package.json, just run setup again and npm init will be skipped
-    npm init
+    echo "run npm init"
+    exit 1
 fi
 
 LDBase=$1
 
 git init
-git submodule add "C:\Users\Owner\Documents\fun\ludum\Ludum-Dare-Base.git" $LDBase
+git submodule add "C:\Users\Owner\Documents\fun\ludum\Ludum-Dare-Base-Staging" $LDBase
 npm install gulp --save-dev
 ./$LDBase/dep/setup $LDBase

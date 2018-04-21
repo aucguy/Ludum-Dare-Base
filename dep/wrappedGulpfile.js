@@ -11,7 +11,6 @@ const pp = require('gulp-preprocess');
 const addsrc = require('gulp-add-src');
 const jshint = require('gulp-jshint');
 const prettify = require('gulp-jsbeautifier');
-const replace = require('gulp-replace');
 
 const yargs = require('yargs');
 
