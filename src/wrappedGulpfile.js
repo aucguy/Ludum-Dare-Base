@@ -14,7 +14,7 @@ const rimraf = require('rimraf');
 const util = require('./util');
 
 const installDir = '.';
-const ldBaseDir = 'node_modules/ludum-dare-base';
+const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
 
 function load(gulp) {
   var config = null;
@@ -89,16 +89,16 @@ function load(gulp) {
   
   function buildLibs() {
     //fabric is prebuilt
-    var baseloaderDir = libDir('baseloader');
+    var bootstrapUtilDir = libDir('bootstrap-util');
     var phaserDir = libDir('phaser-ce');
     var fabricDir = libDir('fabric');
-    buildLib(baseloaderDir, 'grunt build --injectors=phaser');
+    buildLib(bootstrapUtilDir, 'grunt build --injectors=phaser');
     buildLib(phaserDir, 'grunt build');
     gulp.src([path.join(fabricDir, 'dist/fabric.js'),
       path.join(phaserDir, 'dist/phaser.js'),
       path.join(phaserDir, 'dist/phaser.min.js'),
-      path.join(baseloaderDir, 'src/base.js'),
-      path.join(baseloaderDir, 'build/*.js')])
+      path.join(bootstrapUtilDir, 'src/base.js'),
+      path.join(bootstrapUtilDir, 'build/*.js')])
       .pipe(gulp.dest('build/lib'))
   }
 

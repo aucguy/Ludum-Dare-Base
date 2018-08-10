@@ -1,3 +1,3 @@
 npm install gulp --save-dev
-echo "require('./node_modules/ludum-dare-base/src/wrappedGulpFile.js').load(require('gulp'));" > gulpfile.js
+echo "require('./node_modules/aucguy-ludum-dare-base/src/wrappedGulpFile.js').load(require('gulp'));" > gulpfile.js
 gulp setup

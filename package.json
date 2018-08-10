@@ -1,6 +1,6 @@
 {
   "name": "aucguy-ludum-dare-base",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Base code for Ludum-Dare",
   "main": "none",
   "author": "aucguy",
@@ -27,6 +27,7 @@
     "prepr": "^1.1.1",
     "rimraf": "^2.6.2",
     "through2": "^2.0.3",
-    "yargs": "^11.0.0"
+    "yargs": "^11.0.0",
+    "bootstrap-util": "1.0.1"
   }
 }
