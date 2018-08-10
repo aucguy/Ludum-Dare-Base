@@ -1,0 +1,9 @@
+{
+    "items": [
+        ["lib/baseinjectors", "/build/lib/baseinjectors.js", "script"],
+        ["lib/phaser", "/build/lib/phaser.js", "script"],
+        ["lib/fabric", "/build/lib/fabric.js", "script"],
+        ["lib/util", "../common/util.js", "script"],
+        ["lib/gui", "../common/gui.js", "script"]
+    ]
+}

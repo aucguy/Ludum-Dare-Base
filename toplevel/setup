@@ -1,2 +1,0 @@
-LDBase="/* @echo ldBaseDir */"
-./$LDBase/dep/setup $LDBase
