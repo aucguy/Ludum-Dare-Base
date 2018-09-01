@@ -15,6 +15,23 @@ const util = require('./util');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
+const fs = require('fs');
+const path = require('path');
+const child_process = require('child_process');
+
+const replace = require('gulp-replace');
+const concat = require('gulp-concat');
+const uglify = require('gulp-uglify');
+const addsrc = require('gulp-add-src');
+const jshint = require('gulp-jshint');
+const prettify = require('gulp-jsbeautifier');
+
+const rimraf = require('rimraf');
+
+const util = require('./util');
+
+const installDir = '.';
+const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
 
 function load(gulp) {
   var config = null;
@@ -87,7 +104,7 @@ function load(gulp) {
     throw(new Error('library ' + name + ' not found'));
   }
   
-  function buildLibs() {
+  function buildLibs(callback) {
     //fabric is prebuilt
     var bootstrapUtilDir = libDir('bootstrap-util');
     var phaserDir = libDir('phaser-ce');
@@ -100,6 +117,11 @@ function load(gulp) {
       path.join(bootstrapUtilDir, 'src/base.js'),
       path.join(bootstrapUtilDir, 'build/*.js')])
       .pipe(gulp.dest('build/lib'))
+      .on('end', () => {
+    	  if(callback) {
+    		  callback();
+    	  }
+      });
   }
 
   /**
@@ -119,49 +141,49 @@ function load(gulp) {
   gulp.task('build', function() {
     //delete old release
     rimraf.sync('build/release');
-    buildLibs(); //TODO make this work here
-    
-    var config = getConfig();
-    var assetItems = [
-      ['scripts/app', 'app.min.js', 'script'],
-    ].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
-    var assetStr = JSON.stringify(assetItems);
-    
-    //fabric uglify
-    gulp.src('build/lib/fabric.js')
-      .pipe(uglify())
-      .pipe(concat('fabric.min.js'))
-      .pipe(gulp.dest('build/lib'))
-      .on('end', function() {
-        //application
-        gulp.src(['src/**/*.js', path.join(ldBaseDir, 'lib/common/**/*.js'), '!' + path.join(ldBaseDir, 'lib/common/indexlib.js')])
-          .pipe(uglify())
-          .on('error', handlePipeError)
-          .pipe(addsrc.prepend([
-            'build/lib/fabric.min.js',
-            'build/lib/phaser.min.js',
-            'build/lib/baseinjectors.min.js',
-          ]))
-          .pipe(concat('app.min.js'))
-          .pipe(gulp.dest('build/release'));
-      });
-
-    //bootstrap
-    gulp.src([path.join(ldBaseDir, 'lib/common/indexlib.js'), path.join(ldBaseDir, 'lib/production/index.js')])
-      .pipe(replace('@@ASSETS_JSON@@', assetStr))
-      .pipe(uglify())
-      .on('error', handlePipeError)
-      .pipe(addsrc.prepend('build/lib/base.min.js'))
-      .pipe(concat('bootstrap.min.js'))
-      .pipe(gulp.dest('build/release'));
-    
-     //index.html
-    gulp.src(path.join(ldBaseDir, 'lib/production/index.html'))
-     .pipe(replace('@@TITLE@@', config.title))
-     .pipe(gulp.dest('build/release'));
-
-    //assets
-    gulp.src(['assets/**/*', '!assets/manifest.json']).pipe(gulp.dest('build/release/assets'));
+    buildLibs(() => {
+	    var config = getConfig();
+	    var assetItems = [
+	      ['scripts/app', 'app.min.js', 'script'],
+	    ].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
+	    var assetStr = JSON.stringify(assetItems);
+	    
+	    //fabric uglify
+	    gulp.src('build/lib/fabric.js')
+	      .pipe(uglify())
+	      .pipe(concat('fabric.min.js'))
+	      .pipe(gulp.dest('build/lib'))
+	      .on('end', function() {
+	        //application
+	        gulp.src(['src/**/*.js', path.join(ldBaseDir, 'lib/common/**/*.js'), '!' + path.join(ldBaseDir, 'lib/common/indexlib.js')])
+	          .pipe(uglify())
+	          .on('error', handlePipeError)
+	          .pipe(addsrc.prepend([
+	            'build/lib/fabric.min.js',
+	            'build/lib/phaser.min.js',
+	            'build/lib/baseinjectors.min.js',
+	          ]))
+	          .pipe(concat('app.min.js'))
+	          .pipe(gulp.dest('build/release'));
+	      });
+	
+	    //bootstrap
+	    gulp.src([path.join(ldBaseDir, 'lib/common/indexlib.js'), path.join(ldBaseDir, 'lib/production/index.js')])
+	      .pipe(replace('@@ASSETS_JSON@@', assetStr))
+	      .pipe(uglify())
+	      .on('error', handlePipeError)
+	      .pipe(addsrc.prepend('build/lib/base.min.js'))
+	      .pipe(concat('bootstrap.min.js'))
+	      .pipe(gulp.dest('build/release'));
+	    
+	     //index.html
+	    gulp.src(path.join(ldBaseDir, 'lib/production/index.html'))
+	     .pipe(replace('@@TITLE@@', config.title))
+	     .pipe(gulp.dest('build/release'));
+	
+	    //assets
+	    gulp.src(['assets/**/*', '!assets/manifest.json']).pipe(gulp.dest('build/release/assets'));
+    });
   });
 
   function loadPluginConfig(name) {
