@@ -15,23 +15,6 @@ const util = require('./util');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
-const fs = require('fs');
-const path = require('path');
-const child_process = require('child_process');
-
-const replace = require('gulp-replace');
-const concat = require('gulp-concat');
-const uglify = require('gulp-uglify');
-const addsrc = require('gulp-add-src');
-const jshint = require('gulp-jshint');
-const prettify = require('gulp-jsbeautifier');
-
-const rimraf = require('rimraf');
-
-const util = require('./util');
-
-const installDir = '.';
-const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
 
 function load(gulp) {
   var config = null;
