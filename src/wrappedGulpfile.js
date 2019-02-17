@@ -87,86 +87,117 @@ function load(gulp) {
     throw(new Error('library ' + name + ' not found'));
   }
   
-  function buildLibs(callback) {
-    //fabric is prebuilt
-    var bootstrapUtilDir = libDir('bootstrap-util');
-    var phaserDir = libDir('phaser-ce');
-    var fabricDir = libDir('fabric');
-    buildLib(bootstrapUtilDir, 'grunt build --injectors=phaser');
-    buildLib(phaserDir, 'grunt build');
-    gulp.src([path.join(fabricDir, 'dist/fabric.js'),
-      path.join(phaserDir, 'dist/phaser.js'),
-      path.join(phaserDir, 'dist/phaser.min.js'),
-      path.join(bootstrapUtilDir, 'src/base.js'),
-      path.join(bootstrapUtilDir, 'build/*.js')])
-      .pipe(gulp.dest('build/lib'))
-      .on('end', () => {
-    	  if(callback) {
-    		  callback();
-    	  }
-      });
+  function buildLibs() {
+    return new Promise((resolve, reject) => {
+      //fabric is prebuilt
+      var bootstrapUtilDir = libDir('bootstrap-util');
+      var phaserDir = libDir('phaser-ce');
+      var fabricDir = libDir('fabric');
+      
+      buildLib(bootstrapUtilDir, 'grunt build --injectors=phaser');
+      buildLib(phaserDir, 'grunt build');
+      
+      gulp.src(path.join(fabricDir, 'dist/fabric.js'), {
+          base: path.join(fabricDir, 'dist')
+        })
+        .pipe(addsrc.append([
+          path.join(phaserDir, 'dist/phaser.js'),
+          path.join(phaserDir, 'dist/phaser.min.js')
+        ], {
+          base: path.join(phaserDir, 'dist')
+        }))
+        .pipe(addsrc.append([
+          path.join(bootstrapUtilDir, 'src/base.js')
+        ], {
+          base: path.join(bootstrapUtilDir, 'src')
+        }))
+        .pipe(addsrc.append([
+          path.join(bootstrapUtilDir, 'build/*.js')
+        ], {
+          base: path.join(bootstrapUtilDir, 'build') 
+        }))
+        .pipe(gulp.dest('build/lib'))
+        .on('end', resolve);
+    });
   }
 
   /**
    * copies the toplevel files into the main directory and builds the libraries
    */
-  gulp.task('setup', function() {
-    gulp.src(path.join(ldBaseDir, 'toplevel/**/*'), {dot: true})
-      .pipe(gulp.dest(installDir));
+  gulp.task('setup', async () => {
+    await new Promise((resolve, reject) => {
+      gulp.src(path.join(ldBaseDir, 'toplevel/**/*'), {dot: true})
+        .pipe(gulp.dest(installDir))
+        .on('end', resolve);
+    });
     
-    buildLibs();
+    await buildLibs();
   });
 
   function handlePipeError(error) {
     console.log(error.fileName + ': ' + error.message);
   }
 
-  gulp.task('build', function() {
+  gulp.task('build', async () => {
     //delete old release
     rimraf.sync('build/release');
-    buildLibs(() => {
-	    var config = getConfig();
-	    var assetItems = [
-	      ['scripts/app', 'app.min.js', 'script'],
-	    ].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
-	    var assetStr = JSON.stringify(assetItems);
+    await buildLibs();
+    
+    var config = getConfig();
+    var assetItems = [
+      ['scripts/app', 'app.min.js', 'script'],
+    ].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
+    var assetStr = JSON.stringify(assetItems);
 	    
-	    //fabric uglify
-	    gulp.src('build/lib/fabric.js')
-	      .pipe(uglify())
-	      .pipe(concat('fabric.min.js'))
-	      .pipe(gulp.dest('build/lib'))
-	      .on('end', function() {
-	        //application
-	        gulp.src(['src/**/*.js', path.join(ldBaseDir, 'lib/common/**/*.js'), '!' + path.join(ldBaseDir, 'lib/common/indexlib.js')])
-	          .pipe(uglify())
-	          .on('error', handlePipeError)
-	          .pipe(addsrc.prepend([
-	            'build/lib/fabric.min.js',
-	            'build/lib/phaser.min.js',
-	            'build/lib/baseinjectors.min.js',
-	          ]))
-	          .pipe(concat('app.min.js'))
-	          .pipe(gulp.dest('build/release'));
-	      });
-	
-	    //bootstrap
-	    gulp.src([path.join(ldBaseDir, 'lib/common/indexlib.js'), path.join(ldBaseDir, 'lib/production/index.js')])
-	      .pipe(replace('@@ASSETS_JSON@@', assetStr))
-	      .pipe(uglify())
-	      .on('error', handlePipeError)
-	      .pipe(addsrc.prepend('build/lib/base.min.js'))
-	      .pipe(concat('bootstrap.min.js'))
-	      .pipe(gulp.dest('build/release'));
-	    
-	     //index.html
-	    gulp.src(path.join(ldBaseDir, 'lib/production/index.html'))
-	     .pipe(replace('@@TITLE@@', config.title))
-	     .pipe(gulp.dest('build/release'));
-	
-	    //assets
-	    gulp.src(['assets/**/*', '!assets/manifest.json']).pipe(gulp.dest('build/release/assets'));
+    //fabric uglify
+    await new Promise((resolve, reject) => {
+      gulp.src('build/lib/fabric.js')
+        .pipe(uglify())
+        .pipe(concat('fabric.min.js'))
+        .pipe(gulp.dest('build/lib'))
+        .on('end', () => {
+          //application
+          gulp.src(['src/**/*.js', path.join(ldBaseDir, 'lib/common/**/*.js'), '!' + path.join(ldBaseDir, 'lib/common/indexlib.js')])
+            .pipe(uglify())
+            .on('error', handlePipeError)
+            .pipe(addsrc.prepend([
+              'build/lib/fabric.min.js',
+              'build/lib/phaser.min.js',
+              'build/lib/baseinjectors.min.js',
+            ]))
+            .pipe(concat('app.min.js'))
+            .pipe(gulp.dest('build/release'))
+            .on('end', resolve);
+        });
     });
+    
+    //bootstrap
+    await new Promise((resolve, reject) => {
+      gulp.src([path.join(ldBaseDir, 'lib/common/indexlib.js'), path.join(ldBaseDir, 'lib/production/index.js')])
+        .pipe(replace('@@ASSETS_JSON@@', assetStr))
+        .pipe(uglify())
+        .on('error', handlePipeError)
+        .pipe(addsrc.prepend('build/lib/base.min.js'))
+        .pipe(concat('bootstrap.min.js'))
+        .pipe(gulp.dest('build/release'))
+        .on('end', resolve);
+    })
+    
+    //index.html
+    await new Promise((resolve, reject) => {
+      gulp.src(path.join(ldBaseDir, 'lib/production/index.html'))
+       .pipe(replace('@@TITLE@@', config.title))
+       .pipe(concat('index.html'))
+       .pipe(gulp.dest('build/release'))
+       .on('end', resolve);
+    })
+    
+    //assets
+    await new Promise((resolve, reject) => {
+      gulp.src(['assets/**/*', '!assets/manifest.json'])
+        .pipe(gulp.dest('build/release/assets'))
+        .on('end', resolve);
+    })
   });
 
   function loadPluginConfig(name) {
@@ -174,17 +205,24 @@ function load(gulp) {
   }
 
   gulp.task('lint', function() {
-    gulp.src('src/**/*.js')
+    return gulp.src('src/**/*.js')
       .pipe(jshint(loadPluginConfig('.jshintrc')))
       .pipe(jshint.reporter('gulp-jshint-html-reporter'));
   });
 
-  gulp.task('format', function() {
-    gulp.src('src/**/*.js')
-      .pipe(gulp.dest(getBackupFolder('backup')));
-    gulp.src('src/**/*.js')
-      .pipe(prettify(loadPluginConfig('.jsbeautifyrc')))
-      .pipe(gulp.dest('src/'));
+  gulp.task('format', async function() {
+    await new Promise((resolve, reject) => {
+      gulp.src('src/**/*.js')
+        .pipe(gulp.dest(getBackupFolder('backup')))
+        .on('end', resolve);
+    });
+    
+    await new Promise((resolve, reject) => {
+      gulp.src('src/**/*.js')
+        .pipe(prettify(loadPluginConfig('.jsbeautifyrc')))
+        .pipe(gulp.dest('src/'))
+        .on('end', resolve);
+    });
   });
 }
 

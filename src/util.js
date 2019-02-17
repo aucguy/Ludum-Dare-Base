@@ -1,12 +1,4 @@
-const gutil = require('gulp-util');
 const through = require('through2');
-
-/**
- * emit an error with the given message
- **/
-function emitError(obj, msg) {
-  obj.emit('error', new gutil.PluginError('LDBase', msg));
-}
 
 function escape(str) {
   return replaceAll(str, '\\\\', '/');
@@ -59,7 +51,6 @@ function log() {
 }
 
 module.exports = {
-  emitError,
   escape,
   strToFloat,
   replaceAll,
