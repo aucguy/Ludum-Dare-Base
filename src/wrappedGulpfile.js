@@ -13,6 +13,8 @@ const rimraf = require('rimraf');
 
 const util = require('./util');
 
+const glob = require('glob');
+
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
 
@@ -90,11 +92,11 @@ function load(gulp) {
   function buildLibs() {
     return new Promise((resolve, reject) => {
       //fabric is prebuilt
-      var bootstrapUtilDir = libDir('bootstrap-util');
+      var apiIntercept = libDir(path.join('@aucguy', 'api-intercept'));
       var phaserDir = libDir('phaser-ce');
       var fabricDir = libDir('fabric');
       
-      buildLib(bootstrapUtilDir, 'grunt build --injectors=phaser');
+      buildLib(apiIntercept, 'node build.js build --plugins=all --nocompress --output=apiIntercept.js');
       buildLib(phaserDir, 'grunt build');
       
       gulp.src(path.join(fabricDir, 'dist/fabric.js'), {
@@ -107,14 +109,9 @@ function load(gulp) {
           base: path.join(phaserDir, 'dist')
         }))
         .pipe(addsrc.append([
-          path.join(bootstrapUtilDir, 'src/base.js')
+          path.join(apiIntercept, 'build/apiIntercept.js')
         ], {
-          base: path.join(bootstrapUtilDir, 'src')
-        }))
-        .pipe(addsrc.append([
-          path.join(bootstrapUtilDir, 'build/*.js')
-        ], {
-          base: path.join(bootstrapUtilDir, 'build') 
+          base: path.join(apiIntercept, 'build')
         }))
         .pipe(gulp.dest('build/lib'))
         .on('end', resolve);
@@ -125,10 +122,20 @@ function load(gulp) {
    * copies the toplevel files into the main directory and builds the libraries
    */
   gulp.task('setup', async () => {
+    //await new Promise((resolve, reject) => {
+    //  gulp.src(path.join(ldBaseDir, 'toplevel/**/*'), {dot: true})
+    //    .pipe(util.log())
+    //    .pipe(gulp.dest(installDir))
+    //    .on('end', resolve);
+    //});
+    
     await new Promise((resolve, reject) => {
-      gulp.src(path.join(ldBaseDir, 'toplevel/**/*'), {dot: true})
-        .pipe(gulp.dest(installDir))
-        .on('end', resolve);
+      var src = path.join(ldBaseDir, 'toplevel');
+      
+      gulp.src([path.join(src, '**/*')], {
+        dot: true,
+        base: src
+      }).pipe(gulp.dest(installDir)).on('end', resolve);
     });
     
     await buildLibs();

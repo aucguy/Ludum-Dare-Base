@@ -6,7 +6,7 @@
   "author": "aucguy",
   "license": "MIT",
   "dependencies": {
-    "bootstrap-util": "1.0.0",
+    "@aucguy/api-intercept": "0.0.0",
     "fabric": "^2.6.0",
     "gulp-add-src": "^1.0.0",
     "gulp-concat": "^2.6.1",
