@@ -130,42 +130,13 @@ function load(gulp) {
    * copies the toplevel files into the main directory and builds the libraries
    */
   gulp.task('setup', async () => {
-    //await new Promise((resolve, reject) => {
-    //  gulp.src(path.join(ldBaseDir, 'toplevel/**/*'), {dot: true})
-    //    .pipe(util.log())
-    //    .pipe(gulp.dest(installDir))
-    //    .on('end', resolve);
-    //});
-    
     await new Promise((resolve, reject) => {
       var src = path.join(ldBaseDir, 'toplevel');
-      
-      var baseManifest = JSON.parse(fs.readFileSync(path.join(ldBaseDir, 'lib/dev/manifest.json')));
-      var userManifest = JSON.parse(fs.readFileSync(path.join(installDir, 'src/manifest.json')));
-      
-      var scripts = baseManifest.items
-        .concat(userManifest.items)
-        .filter(item => item[2] === 'script' || item[2] === 'module')
-        .map(item => `<script ${item[2] === 'module' ? 'type="module"' : ''} src="${item[1]}"></script>`)
-        .join('\n\r');
       
       gulp.src([path.join(src, '**/*')], {
         dot: true,
         base: src
-      })
-        .pipe(through.obj((file, encoding, callback) => {
-          if(file.isBuffer()) {
-            var contents = file.contents.toString(encoding);
-            contents = contents.replace('${scripts}', scripts);
-            file.contents = Buffer.from(contents, encoding);
-            callback(null, file);
-          } else if(file.isDirectory()) {
-            callback(null, file);
-          } else {
-            callback('file is not a buffer', null);
-          }
-        }))
-        .pipe(gulp.dest(installDir)).on('end', resolve);
+      }).pipe(gulp.dest(installDir)).on('end', resolve);
     });
     
     await buildLibs();
