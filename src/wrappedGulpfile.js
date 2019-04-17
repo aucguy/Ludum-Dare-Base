@@ -12,8 +12,8 @@ const prettify = require('gulp-jsbeautifier');
 const rimraf = require('rimraf');
 
 const util = require('./util');
+const through = require('through2');
 
-const glob = require('glob');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
@@ -89,33 +89,41 @@ function load(gulp) {
     throw(new Error('library ' + name + ' not found'));
   }
   
-  function buildLibs() {
-    return new Promise((resolve, reject) => {
-      //fabric is prebuilt
-      var apiIntercept = libDir(path.join('@aucguy', 'api-intercept'));
-      var phaserDir = libDir('phaser-ce');
-      var fabricDir = libDir('fabric');
-      
-      buildLib(apiIntercept, 'node build.js build --plugins=all --nocompress --output=apiIntercept.js');
-      buildLib(phaserDir, 'grunt build');
-      
-      gulp.src(path.join(fabricDir, 'dist/fabric.js'), {
-          base: path.join(fabricDir, 'dist')
-        })
-        .pipe(addsrc.append([
-          path.join(phaserDir, 'dist/phaser.js'),
-          path.join(phaserDir, 'dist/phaser.min.js')
-        ], {
-          base: path.join(phaserDir, 'dist')
-        }))
-        .pipe(addsrc.append([
-          path.join(apiIntercept, 'build/apiIntercept.js')
-        ], {
-          base: path.join(apiIntercept, 'build')
-        }))
-        .pipe(gulp.dest('build/lib'))
-        .on('end', resolve);
+  function mkdirsSync(dir) {
+    if(!fs.existsSync(dir)) {
+      mkdirsSync(path.dirname(dir));
+      fs.mkdirSync(dir);
+    }
+  }
+  
+  async function copyLib(src, dst) {
+    var intro = fs.readFileSync(path.join(ldBaseDir, 'src/intro', dst), {
+      encoding: 'utf-8'
     });
+    var outro = fs.readFileSync(path.join(ldBaseDir, 'src/outro', dst), {
+      encoding: 'utf-8'
+    });
+    var contents = intro + fs.readFileSync(src, {
+      encoding: 'utf-8'
+    }) + outro;
+    mkdirsSync(path.dirname(dst));
+    fs.writeFileSync(path.join('build/lib', dst), contents, {
+      encoding: 'utf-8'
+    });
+  }
+  
+  async function buildLibs() {
+    //fabric is prebuilt
+    var apiIntercept = libDir(path.join('@aucguy', 'api-intercept'));
+    var phaserDir = libDir('phaser-ce');
+    var fabricDir = libDir('fabric');
+    
+    buildLib(apiIntercept, 'node build.js build --plugins=all --nocompress --output=apiIntercept.js');
+    buildLib(phaserDir, 'grunt build');
+    
+    await copyLib(path.join(fabricDir, 'dist/fabric.js'), 'fabric.js');
+    await copyLib(path.join(phaserDir, 'dist/phaser.js'), 'phaser.js');
+    await copyLib(path.join(apiIntercept, 'build/apiIntercept.js'), 'apiIntercept.js');
   }
 
   /**
@@ -132,10 +140,32 @@ function load(gulp) {
     await new Promise((resolve, reject) => {
       var src = path.join(ldBaseDir, 'toplevel');
       
+      var baseManifest = JSON.parse(fs.readFileSync(path.join(ldBaseDir, 'lib/dev/manifest.json')));
+      var userManifest = JSON.parse(fs.readFileSync(path.join(installDir, 'src/manifest.json')));
+      
+      var scripts = baseManifest.items
+        .concat(userManifest.items)
+        .filter(item => item[2] === 'script' || item[2] === 'module')
+        .map(item => `<script ${item[2] === 'module' ? 'type="module"' : ''} src="${item[1]}"></script>`)
+        .join('\n\r');
+      
       gulp.src([path.join(src, '**/*')], {
         dot: true,
         base: src
-      }).pipe(gulp.dest(installDir)).on('end', resolve);
+      })
+        .pipe(through.obj((file, encoding, callback) => {
+          if(file.isBuffer()) {
+            var contents = file.contents.toString(encoding);
+            contents = contents.replace('${scripts}', scripts);
+            file.contents = Buffer.from(contents, encoding);
+            callback(null, file);
+          } else if(file.isDirectory()) {
+            callback(null, file);
+          } else {
+            callback('file is not a buffer', null);
+          }
+        }))
+        .pipe(gulp.dest(installDir)).on('end', resolve);
     });
     
     await buildLibs();
