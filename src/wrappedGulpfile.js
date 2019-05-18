@@ -106,7 +106,7 @@ function load(gulp) {
     var contents = intro + fs.readFileSync(src, {
       encoding: 'utf-8'
     }) + outro;
-    mkdirsSync(path.dirname(dst));
+    mkdirsSync(path.dirname(path.join('build/lib', dst)));
     fs.writeFileSync(path.join('build/lib', dst), contents, {
       encoding: 'utf-8'
     });
@@ -114,16 +114,11 @@ function load(gulp) {
   
   async function buildLibs() {
     //fabric is prebuilt
-    var apiIntercept = libDir(path.join('@aucguy', 'api-intercept'));
-    var phaserDir = libDir('phaser-ce');
+    var phaserDir = libDir('phaser');
     var fabricDir = libDir('fabric');
-    
-    buildLib(apiIntercept, 'node build.js build --plugins=all --nocompress --output=apiIntercept.js');
-    buildLib(phaserDir, 'grunt build');
-    
+        
     await copyLib(path.join(fabricDir, 'dist/fabric.js'), 'fabric.js');
     await copyLib(path.join(phaserDir, 'dist/phaser.js'), 'phaser.js');
-    await copyLib(path.join(apiIntercept, 'build/apiIntercept.js'), 'apiIntercept.js');
   }
 
   /**

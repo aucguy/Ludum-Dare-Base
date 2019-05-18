@@ -1,6 +1,5 @@
 {
     "items": [
-        ["lib/baseinjectors", "/build/lib/apiIntercept.js", "script"],
         ["lib/phaser", "/build/lib/phaser.js", "script"],
         ["lib/fabric", "/build/lib/fabric.js", "script"],
         ["lib/util", "/lib/util.js", "module"],
