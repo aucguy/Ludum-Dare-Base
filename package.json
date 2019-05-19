@@ -17,6 +17,7 @@
     "jshint": "^2.10.1",
     "phaser": "^3.17.0",
     "rimraf": "^2.6.3",
+    "rollup": "^1.12.3",
     "through2": "^3.0.0"
   },
   "devDependencies": {}

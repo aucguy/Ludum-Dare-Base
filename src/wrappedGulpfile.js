@@ -13,7 +13,7 @@ const rimraf = require('rimraf');
 
 const util = require('./util');
 const through = require('through2');
-
+const rollup = require('rollup');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
@@ -140,6 +140,34 @@ function load(gulp) {
   function handlePipeError(error) {
     console.log(error.fileName + ': ' + error.message);
   }
+  
+  gulp.task('test', async () => {
+    var bundle = await rollup.rollup({
+      input: './src/main.js',
+      plugins: [{
+        resolveId(source) {
+          if(source.startsWith('/')) {
+            return source;
+          } else {
+            return null;
+          }
+        },
+        load(id) {
+          if(id.startsWith('/')) {
+            return fs.readFileSync(path.join(installDir, id), 'utf-8');
+          } else {
+            return null;
+          }
+        }
+      }]
+    });
+    
+    await bundle.write({
+      file: 'build/test.js',
+      format: 'iife',
+      name: 'myBundle'
+    });
+  });
 
   gulp.task('build', async () => {
     //delete old release
