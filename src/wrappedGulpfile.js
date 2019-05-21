@@ -141,94 +141,82 @@ function load(gulp) {
     console.log(error.fileName + ': ' + error.message);
   }
   
-  gulp.task('test', async () => {
+  const rollupPlugin = {
+    resolveId(source, importer) {
+      if(source.startsWith('/')) {
+        return source;
+      } else if(importer !== undefined && importer.startsWith('/')) {
+        return path.join(path.dirname(path.join(installDir, importer)), source);
+      } else {
+        return null;
+      }
+    },
+    load(id) {
+      if(id.startsWith('/')) {
+        return fs.readFileSync(path.join(installDir, id), 'utf-8');
+      } else {
+        return null;
+      }
+    }
+  };
+  
+  async function doRollup(input, output, name) {
     var bundle = await rollup.rollup({
-      input: './src/main.js',
-      plugins: [{
-        resolveId(source) {
-          if(source.startsWith('/')) {
-            return source;
-          } else {
-            return null;
-          }
-        },
-        load(id) {
-          if(id.startsWith('/')) {
-            return fs.readFileSync(path.join(installDir, id), 'utf-8');
-          } else {
-            return null;
-          }
-        }
-      }]
+      input,
+      plugins: [rollupPlugin]
     });
     
     await bundle.write({
-      file: 'build/test.js',
+      file: output,
       format: 'iife',
-      name: 'myBundle'
+      name
     });
-  });
+  }
 
   gulp.task('build', async () => {
     //delete old release
     rimraf.sync('build/release');
     await buildLibs();
     
-    var config = getConfig();
-    var assetItems = [
-      ['scripts/app', 'app.min.js', 'script'],
-    ].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
-    var assetStr = JSON.stringify(assetItems);
-	    
-    //fabric uglify
-    await new Promise((resolve, reject) => {
-      gulp.src('build/lib/fabric.js')
-        .pipe(uglify())
-        .pipe(concat('fabric.min.js'))
-        .pipe(gulp.dest('build/lib'))
-        .on('end', () => {
-          //application
-          gulp.src(['src/**/*.js', path.join(ldBaseDir, 'lib/common/**/*.js'), '!' + path.join(ldBaseDir, 'lib/common/indexlib.js')])
-            .pipe(uglify())
-            .on('error', handlePipeError)
-            .pipe(addsrc.prepend([
-              'build/lib/fabric.min.js',
-              'build/lib/phaser.min.js',
-              'build/lib/baseinjectors.min.js',
-            ]))
-            .pipe(concat('app.min.js'))
-            .pipe(gulp.dest('build/release'))
-            .on('end', resolve);
-        });
-    });
+    //var assetItems = [
+    //  ['scripts/app', 'app.min.js', 'script'],
+    //].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
+    //var assetStr = fs.readFileSync('assets/manifest.json');
+	  
+    await doRollup(
+      './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
+      'build/bootstrap.js',
+      'ldBootstrap'
+    );
     
-    //bootstrap
-    await new Promise((resolve, reject) => {
-      gulp.src([path.join(ldBaseDir, 'lib/common/indexlib.js'), path.join(ldBaseDir, 'lib/production/index.js')])
-        .pipe(replace('@@ASSETS_JSON@@', assetStr))
-        .pipe(uglify())
-        .on('error', handlePipeError)
-        .pipe(addsrc.prepend('build/lib/base.min.js'))
-        .pipe(concat('bootstrap.min.js'))
-        .pipe(gulp.dest('build/release'))
-        .on('end', resolve);
-    })
+    await doRollup(
+      './node_modules/aucguy-ludum-dare-base/lib/common/init.js',
+      'build/release/app.js',
+      'ldApp'
+    );
     
     //index.html
     await new Promise((resolve, reject) => {
+      var config = getConfig();
+      var bootstrapCode = fs.readFileSync('build/bootstrap.js', 'utf-8');
+      
       gulp.src(path.join(ldBaseDir, 'lib/production/index.html'))
        .pipe(replace('@@TITLE@@', config.title))
+       .pipe(replace('@@BOOTSTRAP@@', bootstrapCode))
        .pipe(concat('index.html'))
        .pipe(gulp.dest('build/release'))
        .on('end', resolve);
-    })
+    });
     
     //assets
     await new Promise((resolve, reject) => {
-      gulp.src(['assets/**/*', '!assets/manifest.json'])
+      var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+      var paths = manifest.items.map(item => item.url);
+      
+      gulp.src(paths.concat(['assets/image/logo.png', 'assets/manifest.json']))
         .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
-    })
+    });
   });
 
   function loadPluginConfig(name) {
