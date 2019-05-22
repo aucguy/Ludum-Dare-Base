@@ -14,6 +14,7 @@ const rimraf = require('rimraf');
 const util = require('./util');
 const through = require('through2');
 const rollup = require('rollup');
+const babel = require('gulp-babel');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
@@ -167,9 +168,20 @@ function load(gulp) {
     });
     
     await bundle.write({
-      file: output,
+      file: 'build/tmp.js',
       format: 'iife',
       name
+    });
+    
+    await new Promise((resolve, reject) => {
+      gulp.src('build/tmp.js')
+        .pipe(babel({
+          presets: ['@babel/env']
+        }))
+        .pipe(uglify())
+        .pipe(concat(path.basename(output)))
+        .pipe(gulp.dest(path.dirname(output)))
+        .on('end', resolve);
     });
   }
 

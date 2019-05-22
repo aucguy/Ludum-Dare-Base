@@ -6,8 +6,11 @@
   "author": "aucguy",
   "license": "MIT",
   "dependencies": {
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
     "fabric": "^2.6.0",
     "gulp-add-src": "^1.0.0",
+    "gulp-babel": "^8.0.0",
     "gulp-concat": "^2.6.1",
     "gulp-jsbeautifier": "^3.0.0",
     "gulp-jshint": "^2.0.4",
