@@ -142,29 +142,40 @@ function load(gulp) {
     console.log(error.fileName + ': ' + error.message);
   }
   
-  const rollupPlugin = {
-    resolveId(source, importer) {
-      if(source.startsWith('/')) {
-        return source;
-      } else if(importer !== undefined && importer.startsWith('/')) {
-        return path.join(path.dirname(path.join(installDir, importer)), source);
-      } else {
-        return null;
-      }
-    },
-    load(id) {
-      if(id.startsWith('/')) {
-        return fs.readFileSync(path.join(installDir, id), 'utf-8');
-      } else {
-        return null;
+  function rollupPlugin(manifest) {
+    var manifestId = path.normalize(path.resolve(installDir,
+      'node_modules/aucguy-ludum-dare-base/lib/dev/manifest.js'));
+    var replacePath = path.join(installDir,
+      'node_modules/aucguy-ludum-dare-base/lib/production/manifest.js');
+    return {
+      name: 'ldBase',
+      resolveId(source, importer) {
+        if(source.startsWith('/')) {
+          return source;
+        } else if(importer !== undefined && importer.startsWith('/')) {
+          return path.join(path.dirname(path.join(installDir, importer)), source);
+        } else {
+          return null;
+        }
+      },
+      load(id) {
+        var normalId = path.normalize(path.resolve(installDir, id));
+        if(normalId === manifestId) {
+          return fs.readFileSync(replacePath, 'utf-8')
+            .replace('@@MANIFEST@@', manifest);
+        } if(id.startsWith('/')) {
+          return fs.readFileSync(path.join(installDir, id), 'utf-8');
+        } else {
+          return null;
+        }
       }
     }
   };
   
-  async function doRollup(input, output, name) {
+  async function doRollup(input, output, name, manifest) {
     var bundle = await rollup.rollup({
       input,
-      plugins: [rollupPlugin]
+      plugins: [rollupPlugin(manifest)]
     });
     
     await bundle.write({
@@ -193,18 +204,20 @@ function load(gulp) {
     //var assetItems = [
     //  ['scripts/app', 'app.min.js', 'script'],
     //].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
-    //var assetStr = fs.readFileSync('assets/manifest.json');
+    var assetStr = fs.readFileSync('assets/manifest.json');
 	  
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
       'build/bootstrap.js',
-      'ldBootstrap'
+      'ldBootstrap',
+      assetStr
     );
     
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/init.js',
       'build/release/app.js',
-      'ldApp'
+      'ldApp',
+      assetStr
     );
     
     //index.html
@@ -225,7 +238,7 @@ function load(gulp) {
       var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
       var paths = manifest.items.map(item => item.url);
       
-      gulp.src(paths.concat(['assets/image/logo.png', 'assets/manifest.json']))
+      gulp.src(paths.concat(['assets/image/logo.png']))
         .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
     });
