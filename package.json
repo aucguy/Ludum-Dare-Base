@@ -7,7 +7,8 @@
   "license": "MIT",
   "dependencies": {
     "fabric": "^2.6.0",
-    "phaser": "^3.17.0"
+    "phaser": "^3.17.0",
+    "svgo": "^1.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.4.5",

@@ -135,6 +135,20 @@ function load(gulp) {
       }).pipe(gulp.dest(installDir)).on('end', resolve);
     });
     
+    var defaultConfigPath = path.join(ldBaseDir, 'src/config.json');
+    var defaultConfig = JSON.parse(fs.readFileSync(defaultConfigPath, 'utf-8'));
+    
+    var specifiedConfigPath = path.join(installDir, 'config.json');
+    var specifiedConfig;
+    if(fs.existsSync(specifiedConfigPath)) {
+      specifiedConfig = JSON.parse(fs.readFileSync(specifiedConfigPath, 'utf-8'));
+    } else {
+      specifiedConfig = {};
+    }
+    
+    var newConfig = Object.assign({}, defaultConfig, specifiedConfig);
+    fs.writeFileSync(specifiedConfigPath, JSON.stringify(newConfig, null, 4));
+    
     await buildLibs();
   });
 
