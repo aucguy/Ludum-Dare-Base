@@ -11,7 +11,6 @@ const prettify = require('gulp-jsbeautifier');
 
 const rimraf = require('rimraf');
 
-const util = require('./util');
 const through = require('through2');
 const rollup = require('rollup');
 const babel = require('gulp-babel');
@@ -57,8 +56,8 @@ function load(gulp) {
     max = 0;
     if(fs.existsSync(base)) {
       for(var file of fs.readdirSync(base)) {
-        var num = util.strToFloat(file);
-        if(num !== null) {
+        if(/^[0-9]+$/.test(file)) {
+          var num = parseInt(file);
           max = Math.max(max, Math.ceil(num) + 1);
         }
       }
@@ -235,9 +234,6 @@ function load(gulp) {
     rimraf.sync('build/release');
     await buildLibs();
     
-    //var assetItems = [
-    //  ['scripts/app', 'app.min.js', 'script'],
-    //].concat(JSON.parse(fs.readFileSync('assets/manifest.json')).items);
     var assetStr = fs.readFileSync('assets/manifest.json');
 	  
     await doRollup(
