@@ -15,6 +15,7 @@ const util = require('./util');
 const through = require('through2');
 const rollup = require('rollup');
 const babel = require('gulp-babel');
+const imagemin = require('gulp-imagemin');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
@@ -253,6 +254,18 @@ function load(gulp) {
       var paths = manifest.items.map(item => item.url);
       
       gulp.src(paths.concat(['assets/image/logo.png']))
+        .pipe(imagemin([
+          imagemin.gifsicle(),
+          imagemin.jpegtran(),
+          imagemin.optipng(),
+          imagemin.svgo({
+            plugins: [
+              {
+                cleanupIDs: false
+              }
+            ]
+          })
+        ]))
         .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
     });
