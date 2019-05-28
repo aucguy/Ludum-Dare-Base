@@ -269,6 +269,7 @@ function load(gulp) {
     
     //assets
     await new Promise((resolve, reject) => {
+      var config = getConfig();
       var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
       var paths = manifest.items.map(item => item.url);
       
@@ -276,15 +277,17 @@ function load(gulp) {
         .pipe(imagemin([
           imagemin.gifsicle(),
           imagemin.jpegtran(),
-          imagemin.optipng(),
-          imagemin.svgo({
-            plugins: [
-              {
-                cleanupIDs: false
-              }
-            ]
-          })
-        ]))
+          imagemin.optipng()
+        ].concat(config.svgoDisabled === 'true' ? [] : [
+            imagemin.svgo({
+              plugins: [
+                {
+                  cleanupIDs: false
+                }
+              ]
+            })
+          ])
+        ))
         .pipe(jsonmin())
         .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
