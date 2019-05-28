@@ -210,6 +210,25 @@ function load(gulp) {
         .on('end', resolve);
     });
   }
+  
+  function jsonmin() {
+    return through.obj((file, enc, cb) => {
+      try {
+        if(!file.isBuffer()) {
+          cb(null, file);
+          return;
+        }
+        if(path.extname(file.path) === '.json') {
+          var contents = file.contents.toString(enc);
+          contents = JSON.stringify(JSON.parse(contents));
+          file.contents = Buffer.from(contents, enc);
+        }
+        cb(null, file);
+      } catch(e) {
+        cb(e, null);
+      }
+    });
+  }
 
   gulp.task('build', async () => {
     //delete old release
@@ -266,6 +285,7 @@ function load(gulp) {
             ]
           })
         ]))
+        .pipe(jsonmin())
         .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
     });
