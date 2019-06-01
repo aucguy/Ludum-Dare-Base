@@ -15,6 +15,8 @@ const through = require('through2');
 const rollup = require('rollup');
 const babel = require('gulp-babel');
 const imagemin = require('gulp-imagemin');
+const binpack = require('bin-pack');
+const canvas = require('canvas');
 
 const installDir = '.';
 const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
@@ -228,13 +230,90 @@ function load(gulp) {
       }
     });
   }
+  
+  async function generateImageAtlas() {
+    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var images = [];
+    var item;
+    for(item of manifest.items) {
+      if(item.type === 'image' && path.extname(item.url) === '.png') {
+        var can = await canvas.loadImage(path.join(installDir, item.url));
+        images.push({
+          width: can.width,
+          height: can.height,
+          image: can,
+          name: item.name
+        });
+      }
+    }
+    var packed = binpack(images);
+    var output = canvas.createCanvas(packed.width, packed.height);
+    var ctx = output.getContext('2d');
+    var layoutItems = [];
+    for(item of packed.items) {
+      ctx.drawImage(item.item.image, item.x, item.y);
+      layoutItems.push({
+        name: item.item.name,
+        x: item.x,
+        y: item.y,
+        width: item.width,
+        height: item.height
+      })
+    }
+    var stream = fs.createWriteStream(path.join(installDir,
+      'build/release/_imageAtlas.png'));
+    output.createPNGStream().pipe(stream);
+    await new Promise((resolve, reject) => {
+      stream.on('finish', resolve);
+    });
+    
+    var layout = {
+      items: layoutItems
+    };
+    
+    fs.writeFileSync(path.join(installDir, 'build/release/_imageAtlas.json'),
+      JSON.stringify(layout));
+  }
+  
+  function getEmbeddedManifest() {
+    var oldManifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var manifest = {
+      items: []
+    };
+    
+    var hasImage = false;
+    
+    for(var item of oldManifest.items) {
+      if(item.type !== 'image' || path.extname(item.url) == '.svg') {
+        manifest.items.push(item);
+      } else {
+        hasImage = true;
+      }
+    }
+    
+    if(hasImage) {
+      manifest.items.push({
+        name: '$imageAtlasTexture',
+        url: '_imageAtlas.png',
+        type: 'image'
+      });
+      manifest.items.push({
+        name: '$imageAtlasLayout',
+        url: '_imageAtlas.json',
+        type: 'json'
+      });
+    }
+    
+    return manifest;
+  }
 
   gulp.task('build', async () => {
     //delete old release
     rimraf.sync('build/release');
     await buildLibs();
     
-    var assetStr = fs.readFileSync('assets/manifest.json');
+    var manifest = getEmbeddedManifest();
+    var assetStr = JSON.stringify(manifest);
 	  
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
@@ -263,11 +342,13 @@ function load(gulp) {
        .on('end', resolve);
     });
     
+    await generateImageAtlas();
+    
     //assets
     await new Promise((resolve, reject) => {
       var config = getConfig();
-      var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
-      var paths = manifest.items.map(item => item.url);
+      var paths = manifest.items.map(item => item.url)
+        .filter(url => !['_imageAtlas.png', '_imageAtlas.json'].includes(url));
       
       gulp.src(paths.concat(['assets/image/logo.png']))
         .pipe(imagemin([
