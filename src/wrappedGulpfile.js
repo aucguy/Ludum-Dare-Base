@@ -159,10 +159,10 @@ function load(gulp) {
   }
   
   function rollupPlugin(manifest) {
-    var manifestId = path.normalize(path.resolve(installDir,
-      'node_modules/aucguy-ludum-dare-base/lib/dev/manifest.js'));
-    var replacePath = path.join(installDir,
-      'node_modules/aucguy-ludum-dare-base/lib/production/manifest.js');
+    var redirect = {
+      'lib/dev/fetchAssets.js': 'lib/production/fetchAssets.js',
+      'lib/dev/processAssets.js': 'lib/production/processAssets.js'
+    };
     return {
       name: 'ldBase',
       resolveId(source, importer) {
@@ -175,11 +175,16 @@ function load(gulp) {
         }
       },
       load(id) {
-        var normalId = path.normalize(path.resolve(installDir, id));
-        if(normalId === manifestId) {
-          return fs.readFileSync(replacePath, 'utf-8')
-            .replace('@@MANIFEST@@', manifest);
-        } if(id.startsWith('/')) {
+        var normalId = path.normalize(path.resolve(path.join(installDir, id)));
+        
+        for(var i in redirect) {
+          if(path.normalize(path.resolve(path.join(ldBaseDir, i))) === normalId) {
+            var contents = fs.readFileSync(path.join(ldBaseDir, redirect[i]), 'utf-8');
+            return contents.replace('@@MANIFEST@@', manifest);
+          }
+        }
+        
+        if(id.startsWith('/')) {
           return fs.readFileSync(path.join(installDir, id), 'utf-8');
         } else {
           return null;
@@ -261,7 +266,7 @@ function load(gulp) {
       })
     }
     var stream = fs.createWriteStream(path.join(installDir,
-      'build/release/_imageAtlas.png'));
+      'build/release/textureAtlas.png'));
     output.createPNGStream().pipe(stream);
     await new Promise((resolve, reject) => {
       stream.on('finish', resolve);
@@ -271,7 +276,7 @@ function load(gulp) {
       items: layoutItems
     };
     
-    fs.writeFileSync(path.join(installDir, 'build/release/_imageAtlas.json'),
+    fs.writeFileSync(path.join(installDir, 'build/release/textureAtlas.json'),
       JSON.stringify(layout));
   }
   
@@ -292,18 +297,10 @@ function load(gulp) {
     }
     
     if(hasImage) {
-      manifest.items.push({
-        name: '$imageAtlasTexture',
-        url: '_imageAtlas.png',
-        type: 'image'
-      });
-      manifest.items.push({
-        name: '$imageAtlasLayout',
-        url: '_imageAtlas.json',
-        type: 'json'
-      });
+      manifest.textureAtlasImage = 'textureAtlas.png',
+      manifest.textureAtlasLayout = 'textureAtlas.json';
     }
-    
+        
     return manifest;
   }
 
