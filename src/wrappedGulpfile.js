@@ -280,7 +280,14 @@ function load(gulp) {
     return layout;
   }
   
-  function getReplacements(layout) {
+  async function getReplacements(layout) {
+    await new Promise((resolve, reject) => {
+      gulp.src('assets/**/*.svg')
+        .pipe(getImagemin())
+        .pipe(gulp.dest('build/assets'))
+        .on('end', resolve);
+    });
+    
     var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
     var assets = {};
     
@@ -299,7 +306,8 @@ function load(gulp) {
           data: JSON.parse(fs.readFileSync(loc, 'utf-8'))
         };
       } else if(item.type === 'image' && path.extname(item.url) === '.svg') {
-        var text = fs.readFileSync(loc, 'utf-8');
+        var p = path.join('build/assets', path.relative('assets', loc));
+        var text = fs.readFileSync(p, 'utf-8');
         text = text.substring(text.indexOf('<svg'));
         assets[item.name] = {
           type: 'image',
@@ -320,6 +328,8 @@ function load(gulp) {
   }
   
   function getImagemin() {
+    var config = getConfig();
+    
     var plugins = [
       imagemin.gifsicle(),
       imagemin.jpegtran(),
@@ -345,7 +355,7 @@ function load(gulp) {
     await buildLibs();
     
     var layout = await generateImageAtlas();
-    var replacements = getReplacements(layout);
+    var replacements = await getReplacements(layout);
 	  
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
