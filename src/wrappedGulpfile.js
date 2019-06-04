@@ -158,7 +158,7 @@ function load(gulp) {
     console.log(error.fileName + ': ' + error.message);
   }
   
-  function rollupPlugin(manifest) {
+  function rollupPlugin(replacements) {
     var redirect = {
       'lib/dev/fetchAssets.js': 'lib/production/fetchAssets.js',
       'lib/dev/processAssets.js': 'lib/production/processAssets.js'
@@ -180,7 +180,12 @@ function load(gulp) {
         for(var i in redirect) {
           if(path.normalize(path.resolve(path.join(ldBaseDir, i))) === normalId) {
             var contents = fs.readFileSync(path.join(ldBaseDir, redirect[i]), 'utf-8');
-            return contents.replace('@@MANIFEST@@', manifest);
+            
+            for(var name in replacements) {
+              contents = contents.replace(`@@${name}@@`, replacements[name]);
+            }
+            
+            return contents;
           }
         }
         
@@ -193,10 +198,10 @@ function load(gulp) {
     }
   };
   
-  async function doRollup(input, output, name, manifest) {
+  async function doRollup(input, output, name, replacements) {
     var bundle = await rollup.rollup({
       input,
-      plugins: [rollupPlugin(manifest)]
+      plugins: [rollupPlugin(replacements)]
     });
     
     await bundle.write({
@@ -254,17 +259,17 @@ function load(gulp) {
     var packed = binpack(images);
     var output = canvas.createCanvas(packed.width, packed.height);
     var ctx = output.getContext('2d');
-    var layoutItems = [];
+    var layout = {};
     for(item of packed.items) {
       ctx.drawImage(item.item.image, item.x, item.y);
-      layoutItems.push({
-        name: item.item.name,
+      layout[item.item.name] = {
         x: item.x,
         y: item.y,
         width: item.width,
         height: item.height
-      })
+      };
     }
+    mkdirsSync(path.join(installDir, 'build/release'));
     var stream = fs.createWriteStream(path.join(installDir,
       'build/release/textureAtlas.png'));
     output.createPNGStream().pipe(stream);
@@ -272,36 +277,66 @@ function load(gulp) {
       stream.on('finish', resolve);
     });
     
-    var layout = {
-      items: layoutItems
-    };
-    
-    fs.writeFileSync(path.join(installDir, 'build/release/textureAtlas.json'),
-      JSON.stringify(layout));
+    return layout;
   }
   
-  function getEmbeddedManifest() {
-    var oldManifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
-    var manifest = {
-      items: []
-    };
+  function getReplacements(layout) {
+    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var assets = {};
     
-    var hasImage = false;
+    var hasTextureAtlas = false;
     
-    for(var item of oldManifest.items) {
-      if(item.type !== 'image' || path.extname(item.url) == '.svg') {
-        manifest.items.push(item);
+    for(var item of manifest.items) {
+      var loc = path.join(installDir, item.url);
+      if(item.type === 'text') {
+        assets[item.name] = {
+          type: 'text',
+          data: fs.readFileSync(loc, 'utf-8')
+        };
+      } else if(item.type === 'json') {
+        assets[item.name] = {
+          type: 'text',
+          data: JSON.parse(fs.readFileSync(loc, 'utf-8'))
+        };
+      } else if(item.type === 'image' && path.extname(item.url) === '.svg') {
+        var text = fs.readFileSync(loc, 'utf-8');
+        text = text.substring(text.indexOf('<svg'));
+        assets[item.name] = {
+          type: 'image',
+          text
+        };
+      } else if(item.type === 'image') {
+        hasTextureAtlas = true;
       } else {
-        hasImage = true;
+        console.error(`unknown asset type url: ${item.url}, type: {item.type}`);
       }
     }
-    
-    if(hasImage) {
-      manifest.textureAtlasImage = 'textureAtlas.png',
-      manifest.textureAtlasLayout = 'textureAtlas.json';
-    }
         
-    return manifest;
+    return {
+      ASSETS: JSON.stringify(assets),
+      TEXTURE_ATLAS_URL: hasTextureAtlas ? "'textureAtlas.png'" : 'null',
+      TEXTURE_ATLAS_LAYOUT: hasTextureAtlas ? JSON.stringify(layout) : 'null'
+    };
+  }
+  
+  function getImagemin() {
+    var plugins = [
+      imagemin.gifsicle(),
+      imagemin.jpegtran(),
+      imagemin.optipng()
+    ];
+    
+    if(config.svgoDisabled !== 'true') {
+      plugins.push(imagemin.svgo({
+        plugins: [
+          {
+            cleanupIDs: false
+          }
+        ]
+      }));
+    }
+    
+    return imagemin(plugins);
   }
 
   gulp.task('build', async () => {
@@ -309,21 +344,21 @@ function load(gulp) {
     rimraf.sync('build/release');
     await buildLibs();
     
-    var manifest = getEmbeddedManifest();
-    var assetStr = JSON.stringify(manifest);
+    var layout = await generateImageAtlas();
+    var replacements = getReplacements(layout);
 	  
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
       'build/bootstrap.js',
       'ldBootstrap',
-      assetStr
+      replacements
     );
     
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/init.js',
       'build/release/app.js',
       'ldApp',
-      assetStr
+      replacements
     );
     
     //index.html
@@ -338,32 +373,12 @@ function load(gulp) {
        .pipe(gulp.dest('build/release'))
        .on('end', resolve);
     });
-    
-    await generateImageAtlas();
-    
-    //assets
+        
+    //logo
     await new Promise((resolve, reject) => {
-      var config = getConfig();
-      var paths = manifest.items.map(item => item.url)
-        .filter(url => !['_imageAtlas.png', '_imageAtlas.json'].includes(url));
-      
-      gulp.src(paths.concat(['assets/image/logo.png']))
-        .pipe(imagemin([
-          imagemin.gifsicle(),
-          imagemin.jpegtran(),
-          imagemin.optipng()
-        ].concat(config.svgoDisabled === 'true' ? [] : [
-            imagemin.svgo({
-              plugins: [
-                {
-                  cleanupIDs: false
-                }
-              ]
-            })
-          ])
-        ))
-        .pipe(jsonmin())
-        .pipe(gulp.dest('build/release/assets'))
+      gulp.src('assets/image/logo.png')
+        .pipe(getImagemin())
+        .pipe(gulp.dest('build/release'))
         .on('end', resolve);
     });
   });
