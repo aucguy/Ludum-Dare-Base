@@ -271,10 +271,17 @@ function load(gulp) {
     }
     mkdirsSync(path.join(installDir, 'build/release'));
     var stream = fs.createWriteStream(path.join(installDir,
-      'build/release/textureAtlas.png'));
+      'build/textureAtlas.png'));
     output.createPNGStream().pipe(stream);
     await new Promise((resolve, reject) => {
       stream.on('finish', resolve);
+    });
+    
+    await new Promise((resolve, reject) => {
+      gulp.src('build/textureAtlas.png')
+        .pipe(getImagemin())
+        .pipe(gulp.dest('build/release'))
+        .on('end', resolve);
     });
     
     return layout;
