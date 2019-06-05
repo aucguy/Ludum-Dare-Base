@@ -287,6 +287,19 @@ function load(gulp) {
     return layout;
   }
   
+  function getAudioFiles() {
+    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var files = {};
+    
+    for(var item of manifest.items) {
+      if(item.type === 'audio') {
+        files[item.name] = item.url;
+      }
+    }
+    
+    return files;
+  }
+  
   async function getReplacements(layout) {
     await new Promise((resolve, reject) => {
       gulp.src('assets/**/*.svg')
@@ -322,6 +335,7 @@ function load(gulp) {
         };
       } else if(item.type === 'image') {
         hasTextureAtlas = true;
+      } else if(item.type === 'audio') {
       } else {
         console.error(`unknown asset type url: ${item.url}, type: {item.type}`);
       }
@@ -330,7 +344,8 @@ function load(gulp) {
     return {
       ASSETS: JSON.stringify(assets),
       TEXTURE_ATLAS_URL: hasTextureAtlas ? "'textureAtlas.png'" : 'null',
-      TEXTURE_ATLAS_LAYOUT: hasTextureAtlas ? JSON.stringify(layout) : 'null'
+      TEXTURE_ATLAS_LAYOUT: hasTextureAtlas ? JSON.stringify(layout) : 'null',
+      AUDIO_FILES: JSON.stringify(getAudioFiles()),
     };
   }
   
@@ -363,7 +378,7 @@ function load(gulp) {
     
     var layout = await generateImageAtlas();
     var replacements = await getReplacements(layout);
-	  
+    	  
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
       'build/bootstrap.js',
@@ -391,11 +406,24 @@ function load(gulp) {
        .on('end', resolve);
     });
         
-    //logo
+    //assets
     await new Promise((resolve, reject) => {
-      gulp.src('assets/image/logo.png')
+      var manifest = JSON.parse(fs.readFileSync(
+        path.join(installDir, 'assets/manifest.json')));
+      
+      var audioFiles = getAudioFiles();
+      var paths = ['assets/image/logo.png'];
+      for(var name in audioFiles) {
+        paths.push(audioFiles[name]);
+      }
+      
+      gulp.src(paths)
+        .pipe(through.obj((file, enc, cb) => {
+          file.base = path.resolve(path.join(installDir, 'assets'));
+          cb(null, file);
+        }))
         .pipe(getImagemin())
-        .pipe(gulp.dest('build/release'))
+        .pipe(gulp.dest('build/release/assets'))
         .on('end', resolve);
     });
   });
