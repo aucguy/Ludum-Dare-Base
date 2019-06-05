@@ -388,10 +388,18 @@ function load(gulp) {
     
     await doRollup(
       './node_modules/aucguy-ludum-dare-base/lib/common/init.js',
-      'build/release/app.js',
+      'build/app.js',
       'ldApp',
       replacements
     );
+    
+    await new Promise((resolve, reject) => {
+      gulp.src('build/app.js')
+        .pipe(addsrc.prepend(path.join(libDir('@babel/polyfill'), 'dist/polyfill.min.js')))
+        .pipe(concat('app.js'))
+        .pipe(gulp.dest('build/release'))
+        .on('end', resolve);
+    });
     
     //index.html
     await new Promise((resolve, reject) => {
