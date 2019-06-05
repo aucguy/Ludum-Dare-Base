@@ -11,11 +11,11 @@
     "@babel/preset-env": "^7.4.5",
     "bin-pack": "^1.0.2",
     "canvas": "^2.5.0",
-    "fabric": "^2.6.0",
+    "fabric": "^3.1.0",
     "gulp-add-src": "^1.0.0",
     "gulp-babel": "^8.0.0",
     "gulp-concat": "^2.6.1",
-    "gulp-imagemin": "^5.0.3",
+    "gulp-imagemin": "^6.0.0",
     "gulp-jsbeautifier": "^3.0.0",
     "gulp-jshint": "^2.1.0",
     "gulp-jshint-html-reporter": "^0.1.4",
@@ -24,7 +24,7 @@
     "jshint": "^2.10.2",
     "phaser": "^3.17.0",
     "rimraf": "^2.6.3",
-    "rollup": "^1.12.3",
+    "rollup": "^1.14.2",
     "through2": "^3.0.1"
   },
   "devDependencies": {}
