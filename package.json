@@ -1,6 +1,6 @@
 {
   "name": "aucguy-ludum-dare-base",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Base code for Ludum-Dare",
   "main": "src/wrappedGulpfile.js",
   "author": "aucguy",
