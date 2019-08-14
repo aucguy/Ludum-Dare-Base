@@ -131,10 +131,16 @@ function load(gulp) {
     await new Promise((resolve, reject) => {
       var src = path.join(ldBaseDir, 'toplevel');
       
-      gulp.src([path.join(src, '**/*')], {
-        dot: true,
+      gulp.src(path.join(src, '**/*'), {
         base: src
-      }).pipe(gulp.dest(installDir)).on('end', resolve);
+      }).pipe(through.obj((file, enc, cb) => {
+        var base = path.basename(file.path);
+        if(base.startsWith('_.')) {
+          file.path = path.join(path.dirname(file.path), base.slice(1));
+        }
+        cb(null, file);
+      }))
+      .pipe(gulp.dest(installDir)).on('end', resolve);
     });
     
     var defaultConfigPath = path.join(ldBaseDir, 'src/config.json');
@@ -142,6 +148,7 @@ function load(gulp) {
     
     var specifiedConfigPath = path.join(installDir, 'config.json');
     var specifiedConfig;
+    
     if(fs.existsSync(specifiedConfigPath)) {
       specifiedConfig = JSON.parse(fs.readFileSync(specifiedConfigPath, 'utf-8'));
     } else {
