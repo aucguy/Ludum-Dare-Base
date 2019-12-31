@@ -51,6 +51,10 @@ function load(gulp) {
     }
     return config;
   }
+  
+  function getManifest() {
+    return JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+  }
 
   /**
    * get a nonexistant folder to back up to
@@ -161,10 +165,6 @@ function load(gulp) {
     
     await buildLibs();
   });
-
-  function handlePipeError(error) {
-    console.log(error.fileName + ': ' + error.message);
-  }
   
   function rollupPlugin(replacements) {
     var redirect = {
@@ -175,14 +175,18 @@ function load(gulp) {
       name: 'ldBase',
       resolveId(source, importer) {
         if(source.startsWith('/')) {
+          //relative to the installDir (where the server points in dev mode)
           return path.join(installDir, source);
         } else if(source.startsWith('./')) {
+          //relative to the importer
           return path.join(path.dirname(importer), source.substring(1));
         } else {
+          //relative to the installDir
           return null;
         }
       },
       load(id) {
+        //the id is an absolute path at this point
         var normalId = path.normalize(id);
         
         for(var i in redirect) {
@@ -210,12 +214,16 @@ function load(gulp) {
     
     await bundle.write({
       file: 'build/tmp.js',
-      format: 'iife',
+      format: 'iife', //standalone format
       name
     });
     
     await new Promise((resolve, reject) => {
       gulp.src('build/tmp.js')
+        .pipe(babel({
+          presets: ['@babel/env']
+        }))
+        .pipe(uglify())
         .pipe(concat(path.basename(output)))
         .pipe(gulp.dest(path.dirname(output)))
         .on('end', resolve)
@@ -242,7 +250,7 @@ function load(gulp) {
   }
   
   async function generateImageAtlas() {
-    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var manifest = getManifest();
     var images = [];
     var item;
     for(item of manifest.items) {
@@ -288,7 +296,7 @@ function load(gulp) {
   }
   
   function getAudioFiles() {
-    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var manifest = getManifest();
     var files = {};
     
     for(var item of manifest.items) {
@@ -308,7 +316,7 @@ function load(gulp) {
         .on('end', resolve);
     });
     
-    var manifest = JSON.parse(fs.readFileSync('assets/manifest.json', 'utf-8'));
+    var manifest = getManifest();
     var assets = {};
     
     var hasTextureAtlas = false;
@@ -333,10 +341,9 @@ function load(gulp) {
           type: 'image',
           text
         };
-      } else if(item.type === 'image') {
+      } else if(item.type === 'image') { //raster image
         hasTextureAtlas = true;
-      } else if(item.type === 'audio') {
-      } else {
+      } else if(item.type !== 'audio') {
         console.error(`unknown asset type url: ${item.url}, type: {item.type}`);
       }
     }
@@ -417,8 +424,7 @@ function load(gulp) {
         
     //assets
     await new Promise((resolve, reject) => {
-      var manifest = JSON.parse(fs.readFileSync(
-        path.join(installDir, 'assets/manifest.json')));
+      var manifest = getManifest();
       
       var audioFiles = getAudioFiles();
       var paths = ['assets/image/logo.png'];

@@ -2,3 +2,4 @@ node_modules
 build
 backup/
 jshint-output.html
+lib/
