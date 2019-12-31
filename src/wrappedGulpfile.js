@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const process = require('process');
 const child_process = require('child_process');
 
 const replace = require('gulp-replace');
@@ -18,8 +19,8 @@ const imagemin = require('gulp-imagemin');
 const binpack = require('bin-pack');
 const canvas = require('canvas');
 
-const installDir = '.';
-const ldBaseDir = 'node_modules/aucguy-ludum-dare-base';
+const installDir = process.cwd();
+const ldBaseDir = path.join(installDir, 'node_modules/aucguy-ludum-dare-base');
 
 function load(gulp) {
   var config = null;
@@ -174,18 +175,18 @@ function load(gulp) {
       name: 'ldBase',
       resolveId(source, importer) {
         if(source.startsWith('/')) {
-          return source;
-        } else if(importer !== undefined && importer.startsWith('/')) {
-          return path.join(path.dirname(path.join(installDir, importer)), source);
+          return path.join(installDir, source);
+        } else if(source.startsWith('./')) {
+          return path.join(path.dirname(importer), source.substring(1));
         } else {
           return null;
         }
       },
       load(id) {
-        var normalId = path.normalize(path.resolve(path.join(installDir, id)));
+        var normalId = path.normalize(id);
         
         for(var i in redirect) {
-          if(path.normalize(path.resolve(path.join(ldBaseDir, i))) === normalId) {
+          if(path.normalize(path.join(ldBaseDir, i)) === normalId) {
             var contents = fs.readFileSync(path.join(ldBaseDir, redirect[i]), 'utf-8');
             
             for(var name in replacements) {
@@ -195,12 +196,8 @@ function load(gulp) {
             return contents;
           }
         }
-        
-        if(id.startsWith('/')) {
-          return fs.readFileSync(path.join(installDir, id), 'utf-8');
-        } else {
-          return null;
-        }
+
+        return null;
       }
     }
   };
@@ -218,11 +215,7 @@ function load(gulp) {
     });
     
     await new Promise((resolve, reject) => {
-      gulp.src('build/tmp.js')
-        .pipe(babel({
-          presets: ['@babel/env']
-        }))
-        .pipe(uglify())
+      gulp.src('build/tmp.js'
         .pipe(concat(path.basename(output)))
         .pipe(gulp.dest(path.dirname(output)))
         .on('end', resolve);
@@ -385,16 +378,17 @@ function load(gulp) {
     
     var layout = await generateImageAtlas();
     var replacements = await getReplacements(layout);
-    	  
+ 
+    var relative = path.relative(installDir, ldBaseDir);
     await doRollup(
-      './node_modules/aucguy-ludum-dare-base/lib/common/bootstrap.js',
+      path.join(relative, 'lib/common/bootstrap.js'),
       'build/bootstrap.js',
       'ldBootstrap',
       replacements
     );
     
     await doRollup(
-      './node_modules/aucguy-ludum-dare-base/lib/common/init.js',
+      path.join(relative, 'lib/common/init.js'),
       'build/app.js',
       'ldApp',
       replacements
