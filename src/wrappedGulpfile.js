@@ -215,10 +215,10 @@ function load(gulp) {
     });
     
     await new Promise((resolve, reject) => {
-      gulp.src('build/tmp.js'
+      gulp.src('build/tmp.js')
         .pipe(concat(path.basename(output)))
         .pipe(gulp.dest(path.dirname(output)))
-        .on('end', resolve);
+        .on('end', resolve)
     });
   }
   
